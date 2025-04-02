@@ -18,7 +18,9 @@ Where the complete Hamiltonian is written as follows:
 
 ```math
 \hat{H} = \hat{H}_U + \hat{H}_K
+```
 
+```math
 \hat{H} = \sum_{i,\nu} U_{\nu,i}(\hat{n}_{\uparrow,\nu,i}-\frac{1}{2})(\hat{n}_{\downarrow,\nu,i}-\frac{1}{2}) -\sum_{ij\sigma}t_{ij}(c^\dagger_{i\sigma}c_{j\sigma}+c^\dagger_{j\sigma}c_{i\sigma})-\mu\sum_{i\sigma}n_{i\sigma}
 ```
 
