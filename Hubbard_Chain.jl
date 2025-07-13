@@ -54,7 +54,7 @@ end
 
 #   https://smoqysuite.github.io/LatticeUtilities.jl/stable/examples/#chain-Lattice
 
-function run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_bins)
+function run_hubbard_chain_simulation(sID::Int, U::Float64, μ::Float64, β::Float64, L::Int, N_burnin::Int, N_updates::Int, N_bins::Int, LessIO::Bool)
     # create the folder to save data
     simulation_info = build_folder_chain(sID, U, μ, β, L, N_burnin, N_updates, N_bins; filepath = "data")
     
@@ -130,17 +130,18 @@ function run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_
 
     hubbard_model = HubbardModel(
         shifted = false, # If true, Hubbard interaction instead parameterized as U⋅nup⋅ndn
-        U_orbital = [1], #NOTE This may need to be changed? 
+        U_orbital = [1],
         U_mean = [U],
     )
-
-    model_summary(
-        simulation_info = simulation_info,
-        β = β, Δτ = Δτ,
-        model_geometry = model_geometry,
-        tight_binding_model = tight_binding_model,
-        interactions = (hubbard_model,)
-    )
+    if !LessIO
+        model_summary(
+            simulation_info = simulation_info,
+            β = β, Δτ = Δτ,
+            model_geometry = model_geometry,
+            tight_binding_model = tight_binding_model,
+            interactions = (hubbard_model,)
+        )
+    end
 
     #########################################
     ### INITIALIZE FINITE MODEL PARAMETERS ##
@@ -225,7 +226,7 @@ function run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_
     )
 
     # Initialize the sub-directories to which the various measurements will be written.
-    initialize_measurement_directories(
+    initialize_measurement_directories(LessIO;
         simulation_info = simulation_info,
         measurement_container = measurement_container
     )
@@ -309,6 +310,8 @@ function run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_
     δG = zero(typeof(logdetGup))
     δθ = zero(typeof(sgndetGup))
 
+    measurement_array = Vector{NamedTuple}(undef, N_bins)
+
     # Iterate over the number of bin, i.e. the number of time measurements will be dumped to file.
     for bin in 1:N_bins
 
@@ -345,8 +348,9 @@ function run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_
         end
 
         # Write the average measurements for the current bin to file.
-        write_measurements!(
+        write_measurements!(LessIO;
             measurement_container = measurement_container,
+            measurement_array = measurement_array,
             simulation_info = simulation_info,
             model_geometry = model_geometry,
             bin = bin,
@@ -354,21 +358,6 @@ function run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_
             Δτ = Δτ
         )
     end
-
-    # Calculate acceptance rate for local updates.
-    additional_info["local_acceptance_rate"] /= (N_updates + N_burnin)
-
-    # Record the final numerical stabilization period that the simulation settled on.
-    additional_info["n_stab_final"] = fermion_greens_calculator_up.n_stab
-
-    # Record the maximum numerical error corrected by numerical stablization.
-    additional_info["dG"] = δG
-
-    # Write simulation summary TOML file.
-    # This simulation summary file records the version number of SmoQyDQMC and Julia
-    # used to perform the simulation. The dictionary `additional_info` is appended
-    # as a table to the end of the simulation summary TOML file.
-    save_simulation_info(simulation_info, additional_info)
 
     #################################
     ### PROCESS SIMULATION RESULTS ##
@@ -380,13 +369,7 @@ function run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_
 
     # Process the simulation results, calculating final error bars for all measurements,
     # writing final statisitics to CSV files.
-    process_measurements(simulation_info.datafolder, N_bins)
-
-    # Merge binary files containing binned data into a single file.
-    # compress_jld2_bins(folder = simulation_info.datafolder)
-
-    # Delete the binary files containing the binned data.
-    # delete_jld2_bins(folder = simulation_info.datafolder)
+    process_measurements(LessIO, simulation_info.datafolder, N_bins, β, Lτ, model_geometry, measurement_array)
 
     return nothing
 
@@ -419,6 +402,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     N_burnin = parse(Int, ARGS[6]) # warm up sweeps
     N_updates = parse(Int, ARGS[7]) # measurement sweeps
     N_bins = parse(Int, ARGS[8]) #measurement bins
+    LessIO = parse(Bool, ARGS[9]) # whether to write to file or not
 
     # check if the simulation has already been run before
     folder_name = @sprintf "hubbard_chain_U%.2f_mu%.2f_L%d_b%.2f-%d" U μ L β sID
@@ -435,27 +419,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
     println("folder_name: ", folder_name)
 
     # check that data folder exists
-    if isdir("data")
-        println("Data folder exists: data/")
-    else
+    if !isdir("data")
         println("Data folder does not exist, creating it now.")
         mkpath("data")
     end
 
     # check if folder/global_stats.csv exists
-    if isfile("data/$folder_name/global_stats.csv")
-        println("global_stats.csv exists, skipping this simulation")
-        
-    else
-        println("global_stats.csv does not exist")
-        println("Check if folder exists")
+    if !isfile("data/$folder_name/global_stats.csv")
         if isdir("data/$folder_name")
-            println("Folder exists, delete and start over ")
             rm("data/$folder_name", recursive=true)
-        else
-            println("Folder does not exist,continuing")
-        # Run the simulation
-        run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_bins)
         end
+        run_hubbard_chain_simulation(sID, U, μ, β, L, N_burnin, N_updates, N_bins, LessIO)
     end
 end

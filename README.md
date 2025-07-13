@@ -4,6 +4,8 @@
 
 Two methods of modeling a periodic 1D Hubbard Chain using DQMC. Firstly using [SmoQyDQMC.jl](https://github.com/SmoQySuite/SmoQyDQMC.jl) and secondly following a [writeup by Dr. Richard Scalettar](https://scalettar.physics.ucdavis.edu/michigan/howto1.pdf)
 
+**Note** Hubbard_Chain.jl is intended to be used with [my fork of SmoQyDQMC](https://github.com/swestastic/SmoQyDQMC.jl/) which has significantly fewer file reads and writes.
+
 The Interaction Hamiltonian for both methods is parameterized as follows in a particle-hole symmetric form:
 
 ```math
