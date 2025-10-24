@@ -42,10 +42,6 @@ Where the complete Hamiltonian is written as follows:
 
 - `Results` has some example data from a run with $\beta=2.0, U=4.0, N=50$
 
-## Issues
+## TODO
 
-- There is a minus sign flip somewhere related to $\mu$, needs to be addressed properly; currently has a temporary fix.
-
-- Poor agreement at low chemical potential values and negative values.
-
-- Likely some issues due to floating point precision and the matrix multiplications.
+- Additional calculations (correlation, susceptbility, structure factor, correlations, energies,etc.)
